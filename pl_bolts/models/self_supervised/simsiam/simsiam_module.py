@@ -1,5 +1,6 @@
 import math
 from argparse import ArgumentParser
+from pl_bolts.datamodules.cifar100_datamodule import CIFAR100DataModule
 from typing import Callable, Optional
 
 import numpy as np
@@ -9,6 +10,7 @@ import torch.nn.functional as F
 from pytorch_lightning import seed_everything
 from pytorch_lightning.utilities import AMPType
 from torch.optim.optimizer import Optimizer
+from torchvision import transforms
 
 from pl_bolts.models.self_supervised.resnets import resnet18, resnet50
 from pl_bolts.models.self_supervised.simsiam.models import SiameseArm
@@ -364,6 +366,33 @@ def cli_main():
         args.temperature = 0.5
 
         normalization = cifar10_normalization()
+
+        args.gaussian_blur = False
+        args.jitter_strength = 0.5
+    elif args.dataset == "cifar100":
+        val_split = 5000
+        if args.nodes * args.gpus * args.batch_size > val_split:
+            val_split = args.nodes * args.gpus * args.batch_size
+
+        dm = CIFAR100DataModule(
+            data_dir=args.data_dir,
+            batch_size=args.batch_size,
+            num_workers=args.num_workers,
+            val_split=val_split,
+        )
+
+        args.num_samples = dm.num_samples
+
+        args.maxpool1 = False
+        args.first_conv = False
+        args.input_height = dm.size()[-1]
+        args.temperature = 0.5
+
+        # ((0.5071, 0.4866, 0.4409), (0.2009, 0.1984, 0.2023))
+        normalization = transforms.Normalize(
+            mean=(0.5071, 0.4866, 0.4409),
+            std=(0.2009, 0.1984, 0.2023),
+        )
 
         args.gaussian_blur = False
         args.jitter_strength = 0.5

@@ -56,6 +56,7 @@ class SSLOnlineEvaluator(Callback):  # pragma: no cover
     def on_pretrain_routine_start(self, trainer: Trainer, pl_module: LightningModule) -> None:
         from pl_bolts.models.self_supervised.evaluator import SSLEvaluator
 
+        print('on_pretrain_routine_start: Creating SSLEvaluator')
         pl_module.non_linear_evaluator = SSLEvaluator(
             n_input=self.z_dim,
             n_classes=self.num_classes,
@@ -94,7 +95,10 @@ class SSLOnlineEvaluator(Callback):  # pragma: no cover
         batch_idx: int,
         dataloader_idx: int,
     ) -> None:
+
         x, y = self.to_device(batch, pl_module.device)
+
+        print("on_train_batch_end: x.size():", x.size())
 
         with torch.no_grad():
             representations = self.get_representations(pl_module, x)
@@ -112,8 +116,8 @@ class SSLOnlineEvaluator(Callback):  # pragma: no cover
 
         # log metrics
         train_acc = accuracy(mlp_preds, y)
-        pl_module.log('online_train_acc', train_acc, on_step=True, on_epoch=False)
-        pl_module.log('online_train_loss', mlp_loss, on_step=True, on_epoch=False)
+        pl_module.log('online_train_acc', train_acc, on_step=True, on_epoch=False, prog_bar=True)
+        pl_module.log('online_train_loss', mlp_loss, on_step=True, on_epoch=False, prog_bar=True)
 
     def on_validation_batch_end(
         self,
@@ -125,6 +129,7 @@ class SSLOnlineEvaluator(Callback):  # pragma: no cover
         dataloader_idx: int,
     ) -> None:
         x, y = self.to_device(batch, pl_module.device)
+        print("on_validation_batch_end: x.size():", x.size())
 
         with torch.no_grad():
             representations = self.get_representations(pl_module, x)
@@ -137,5 +142,5 @@ class SSLOnlineEvaluator(Callback):  # pragma: no cover
 
         # log metrics
         val_acc = accuracy(mlp_preds, y)
-        pl_module.log('online_val_acc', val_acc, on_step=False, on_epoch=True, sync_dist=True)
+        pl_module.log('online_val_acc', val_acc, on_step=False, on_epoch=True, sync_dist=True, prog_bar=True)
         pl_module.log('online_val_loss', mlp_loss, on_step=False, on_epoch=True, sync_dist=True)
